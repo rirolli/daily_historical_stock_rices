@@ -7,6 +7,6 @@ import sys
 for line in sys.stdin:
 	line = line.strip()
 
-	ticker, _, close_a, _, low, high, _, date = line.split(',')
+	ticker, open_a, close_a, _, low, high, _, date = line.split(',')
 
-	print(f"{ticker}\t{close_a}\t{low}\t{high}\t{date}")
+	print(f"{ticker}\t{open_a}\t{close_a}\t{low}\t{high}\t{date}")
