@@ -19,13 +19,25 @@ import sys
 
 from datetime import datetime
 
+# Funzioni di supporto
 def percentage_change(i,f):
     r = 100*((f-i)/i)
     return r
 
+def convert_input_data(ticker, close_a, low, high, date):
+    close_a = float(close_a)
+    low = float(low)
+    high = float(high)
+    date = datetime.strptime(date, '%Y-%m-%d')
+
+    return ticker, close_a, low, high, date
+
+
+# Blocco di esecuzione del reducer.py
 action_map = {}
 
 for line in sys.stdin:
+    # Gestione e conversione dei dati in input
 
     line = line.strip()
 
@@ -73,16 +85,11 @@ for line in sys.stdin:
         if action_map[ticker]['min_price']>low:
             action_map[ticker]['min_price']=low
 
-for act, info in action_map.items():
-    out_str = f"Ticket: {act}"
-    
-    for key in info:
-        out_str += f"\t{key}: {info[key]}"
-    
+# Ordinamento del risultato secondo l'ordine decrescende di ultima chiusura
+sorted_list = sorted(action_map.items(), reverse=True ,key=lambda x: (x[1]['last_date']))
+
+for item in sorted_list:
+    out_str = f"Ticket: {item[0]}"
+    for key in item[1]:
+        out_str += f", {key}: {item[1][key]}"
     print(out_str)
-
-#for act in action_map:
-#    print(f'{act}\t{action_map[act]['first_date']}\t{action_map[act]['last_date']}\t{action_map[act]['var']}\t{action_map[act]['max_price']}\t{action_map[act]['min_price']}')
-#    print(type(action_map[act]))
-#    print(f'{action_map[act].get('var')}')
-
