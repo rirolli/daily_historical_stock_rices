@@ -8,6 +8,20 @@ for line in sys.stdin:
 	line = line.strip()
 
 	# gestire le linee con elementi mancanti
-	ticker, open_a, close_a, adj_close, low, high, volume, date, exchange, name, sector, industry = line.split(',')
+	line = line.replace(', ', ' ')
+	line = line.split(',')
+
+	ticker = line[0]
+	open_a = line[1]
+	close_a = line[2]
+	adj_close = line[3]
+	low = line[4]
+	high = line[5]
+	volume = line[6]
+	date = line[7]
+	exchange = line[8]
+	name = line[9]
+	sector = line[10]
+	industry = line[11]
 
 	print(f"{ticker}\t{close_a}\t{volume}\t{date}\t{sector}")
