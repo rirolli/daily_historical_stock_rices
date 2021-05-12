@@ -52,8 +52,8 @@ SELECT data.ticker,
        data.min_data, 
        data.max_data,
        variazione.var,
-	   data.min_price,
-	   data.max_price
+	data.min_price,
+	data.max_price
 FROM firstAndLastData AS data, variazione
 WHERE data.ticker=variazione.ticker
 SORT BY data.max_data DESC;
