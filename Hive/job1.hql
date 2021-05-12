@@ -17,7 +17,7 @@ LOAD DATA LOCAL INPATH '/Users/seb/Desktop/BigData/daily-historical-stock-prices
 CREATE TABLE firstAndLastData AS
 SELECT ticker, min(dates) AS min_data , max(dates) AS max_data , min(lowThe) AS min_price , max(highThe) AS max_price
 FROM historical_stock_prices
-WHERE year(dates)>=2008
+--WHERE year(dates)>=2016
 GROUP BY ticker;
 
 SELECT * FROM firstAndLastData LIMIT 10;
@@ -25,22 +25,20 @@ SELECT * FROM firstAndLastData LIMIT 10;
 CREATE TABLE firstPriceClose AS
 SELECT data.ticker, data.min_data, hsp.close AS close
 FROM firstAndLastData AS data, historical_stock_prices AS hsp
-WHERE data.min_data=hsp.dates;
+WHERE data.min_data=hsp.dates AND data.ticker=hsp.ticker;
 
 SELECT * FROM firstPriceClose LIMIT 10;
 
 CREATE TABLE lastPriceClose AS
 SELECT data.ticker, data.max_data, hsp.close AS close
 FROM firstAndLastData AS data, historical_stock_prices AS hsp
-WHERE data.max_data=hsp.dates;
+WHERE data.max_data=hsp.dates AND data.ticker=hsp.ticker;
 
 SELECT * FROM lastPriceClose LIMIT 10;
 
 CREATE TABLE variazione AS
-SELECT vi.ticker AS ticker, 
-       (((vf.close-vi.close)/vi.close) * 100) AS var
-FROM   firstPriceClose AS vi, lastPriceClose AS vf
-WHERE  vi.ticker=vf.ticker;
+SELECT vi.ticker, (((vf.close-vi.close)/vi.close) * 100) AS var
+FROM   firstPriceClose AS vi join lastPriceClose AS vf ON vi.ticker=vf.ticker;
 
 SELECT * FROM variazione LIMIT 100;
 
