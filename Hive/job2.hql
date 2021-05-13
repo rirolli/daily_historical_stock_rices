@@ -8,8 +8,11 @@ DROP TABLE firstAzioneClose;
 DROP TABLE lastAzioneClose;
 DROP TABLE variazioneSettore;
 DROP TABLE variazioneAzione;
-DROP TABLE volume;
-
+DROP TABLE maxVolume; 
+DROP TABLE sumVolume; 
+DROP TABLE maxVarAzione;
+DROP TABLE maxVarAzione2;
+DROP TABLE maxVolume2;
 
 CREATE TABLE historical_stock_prices (ticker STRING, open float, close float, adj_close float,lowThe float, highThe float, volume float, dates date)
 ROW FORMAT DELIMITED
@@ -31,7 +34,7 @@ SELECT * FROM sectors LIMIT 100;
 CREATE TABLE sectorYears AS
 SELECT hsp.ticker AS ticker, sectors.sector AS sector, hsp.dates AS data, hsp.close AS close,hsp.volume AS volume
 FROM sectors join historical_stock_prices AS hsp ON sectors.ticker=hsp.ticker
-WHERE YEAR(hsp.dates) >= '2016';
+WHERE YEAR(hsp.dates) >= '2009';
 
 SELECT * FROM sectorYears LIMIT 1000;
 
@@ -85,7 +88,7 @@ WHERE  a.sector=b.sector AND a.max_data=b.data AND a.ticker=b.ticker;
 SELECT * FROM lastAzioneClose LIMIT 1000;
 
 CREATE TABLE variazioneSettore AS
-SELECT a.sector, (((b.max_close-a.min_close)/a.min_close) * 100) AS varSettore , a.anno AS anno
+SELECT a.sector AS sector, (((b.max_close-a.min_close)/a.min_close) * 100) AS varSettore , a.anno AS anno
 FROM minClose AS a, maxClose AS b
 WHERE a.anno=b.anno AND a.sector=b.sector
 ORDER BY a.sector, anno;
@@ -93,26 +96,41 @@ ORDER BY a.sector, anno;
 SELECT * FROM variazioneSettore LIMIT 1000;
 
 CREATE TABLE variazioneAzione AS
-SELECT a.sector, a.ticker, (((b.close-a.close)/a.close) * 100) AS varAzione, a.data AS anno
+SELECT a.sector AS sector, a.ticker AS ticker, (((b.close-a.close)/a.close) * 100) AS varAzione, a.data AS anno
 FROM firstAzioneClose AS a, lastAzioneClose AS b
 WHERE a.data=b.data AND a.ticker=b.ticker;
 
 SELECT * FROM variazioneAzione LIMIT 1000;
 
 -- per ogni azione di un settore sommo il volume di transazioni nell'anno 
-CREATE TABLE volume AS
-SELECT ticker, sector, YEAR(data) AS anno, SUM(volume) AS volume
+
+CREATE TABLE maxVarAzione AS 
+SELECT sector,anno,max(varAzione) AS varAzione
+FROM variazioneAzione
+GROUP BY sector,anno;
+
+CREATE TABLE maxVarAzione2 AS 
+SELECT a.sector,a.anno,b.ticker,a.varAzione
+FROM maxVarAzione as a JOIN variazioneAzione as b ON a.varAzione = b.varAzione
+SORT BY a.sector,a.anno DESC;
+
+CREATE TABLE sumVolume AS
+SELECT sector, ticker, YEAR(data) AS anno, SUM(volume) AS volume
 FROM sectorYears
-GROUP BY ticker,sector,YEAR(data);
+GROUP BY sector,ticker,YEAR(data);
 
-SELECT * FROM volume LIMIT 1000;
+CREATE TABLE maxVolume AS
+SELECT sector, anno, max(volume) AS volume
+FROM sumVolume
+GROUP BY sector,anno;
 
---query finale 
-SELECT a.sector, a.varSettore,b.ticker, max(varAzione) ,c.ticker, max(c.volume), a.anno
-FROM variazioneSettore AS a, variazioneAzione AS b, volume AS c
-WHERE a.sector=b.sector AND b.sector=c.sector AND a.anno=b.anno AND b.anno=c.anno;
+CREATE TABLE maxVolume2 AS
+SELECT a.sector,a.anno,b.ticker,a.volume
+FROM maxVolume as a JOIN sumVolume as b ON a.volume = b.volume
+SORT BY a.sector,a.anno DESC;
 
-
-
-
+--query finale
+SELECT a.sector,c.varSettore,a.anno,a.ticker,a.varAzione,b.ticker,b.volume
+FROM maxVarAzione2 AS a, maxVolume2 AS b , variazioneSettore AS c
+WHERE a.sector=b.sector AND b.sector=c.sector AND a.anno=b.anno AND b.anno=c.anno
 
