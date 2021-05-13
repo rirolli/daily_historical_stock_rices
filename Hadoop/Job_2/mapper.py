@@ -2,26 +2,41 @@
 """mapper.py"""
 
 import sys
+import csv
+
+from datetime import datetime
+
+# dizionari
+ticker_sector_map = {}
+
+with open('historical_stocks.csv') as csv_file:
+    csv_reader = csv.reader(csv_file, delimiter=',')
+
+    firstLine = True    # True se ci troviamo nella prima riga
+
+    for row in csv_reader:
+        if not firstLine:
+            ticker, _, _, sector, _ = row  # ticker, exchange, name, sector, industry
+            ticker_sector_map[ticker] = sector
+        else:
+            firstLine = False
 
 # read lines from STDIN
 for line in sys.stdin:
-	line = line.strip()
+    line = line.strip()
 
-	# gestire le linee con elementi mancanti
-	line = line.replace(', ', ' ')
-	line = line.split(',')
+    # gestire le linee con elementi mancanti
+    line = line.replace(', ', ' ')
 
-	ticker = line[0]
-	open_a = line[1]
-	close_a = line[2]
-	adj_close = line[3]
-	low = line[4]
-	high = line[5]
-	volume = line[6]
-	date = line[7]
-	exchange = line[8]
-	name = line[9]
-	sector = line[10]
-	industry = line[11]
+    # ticker, open, close, adj_close, low, high, volume, date
+    ticker, _, close_a, _, _, _, volume, date = line.split(',')
 
-	print(f"{ticker}\t{close_a}\t{volume}\t{date}\t{sector}")
+    try:
+        date = datetime.strptime(date, '%Y-%m-%d')
+    except Exception:
+        continue
+
+    if date.year >= 2009 and date.year <= 2018:  # scrematura in base all'intervallo annuale
+        # mappatura secondo il ticker
+        print(
+            f"{ticker}\t{close_a}\t{volume}\t{date.date()}\t{ticker_sector_map[ticker]}")

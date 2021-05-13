@@ -59,7 +59,7 @@ for line in sys.stdin:
 
     ticker, close_a, volume, date, sector  = line.split("\t")
 
-    if sector == "":
+    if sector == "N/A":
         continue
 
     # Blocco di conversione dei dati a partire dal formato stringa
@@ -81,63 +81,62 @@ for line in sys.stdin:
     # Gestione dei dizionari
     curr_year = date.year
 
-    if curr_year >= 2009 and curr_year <= 2018:
-        if curr_year not in years_map:
-            years_map[curr_year] = {}
+    if curr_year not in years_map:
+        years_map[curr_year] = {}
 
-        if sector not in years_map[curr_year]:  # se il settore non è già nel dizionario viene aggiunto
-            years_map[curr_year][sector] = {'first_date':date, 'last_date':date, 'first_date_count_close':close_a, 'last_date_count_close':close_a, 'var_count_close':0}
-        else:   # se il settore è già nel dizionario vengono aggiornati tutti i dati
-            if years_map[curr_year][sector]['first_date'] == date:  # controllo della prima data in quell'anno per il settore
-                years_map[curr_year][sector]['first_date_count_close'] += close_a
-                years_map[curr_year][sector]['var_count_close'] = percentage_change(years_map[curr_year][sector]['first_date_count_close'], years_map[curr_year][sector]['last_date_count_close'])
-            elif date < years_map[curr_year][sector]['first_date']: # controllo della prima data in quell'anno per il settore
-                years_map[curr_year][sector]['first_date'] = date
-                years_map[curr_year][sector]['first_date_count_close'] = close_a
-                years_map[curr_year][sector]['var_count_close'] = percentage_change(close_a, years_map[curr_year][sector]['last_date_count_close'])
+    if sector not in years_map[curr_year]:  # se il settore non è già nel dizionario viene aggiunto
+        years_map[curr_year][sector] = {'first_date':date, 'last_date':date, 'first_date_count_close':close_a, 'last_date_count_close':close_a, 'var_count_close':0}
+    else:   # se il settore è già nel dizionario vengono aggiornati tutti i dati
+        if years_map[curr_year][sector]['first_date'] == date:  # controllo della prima data in quell'anno per il settore
+            years_map[curr_year][sector]['first_date_count_close'] += close_a
+            years_map[curr_year][sector]['var_count_close'] = percentage_change(years_map[curr_year][sector]['first_date_count_close'], years_map[curr_year][sector]['last_date_count_close'])
+        elif date < years_map[curr_year][sector]['first_date']: # controllo della prima data in quell'anno per il settore
+            years_map[curr_year][sector]['first_date'] = date
+            years_map[curr_year][sector]['first_date_count_close'] = close_a
+            years_map[curr_year][sector]['var_count_close'] = percentage_change(close_a, years_map[curr_year][sector]['last_date_count_close'])
 
-            if date == years_map[curr_year][sector]['last_date']:   # controllo dell'ultima data in quell'anno per il settore
-                years_map[curr_year][sector]['last_date_count_close'] += close_a
-                years_map[curr_year][sector]['var_count_close'] = percentage_change(years_map[curr_year][sector]['first_date_count_close'], years_map[curr_year][sector]['last_date_count_close'])
-            elif date > years_map[curr_year][sector]['last_date']:  # controllo dell'ultima data in quell'anno per il settore
-                years_map[curr_year][sector]['last_date'] = date
-                years_map[curr_year][sector]['last_date_count_close'] = close_a
-                years_map[curr_year][sector]['var_count_close'] = percentage_change(years_map[curr_year][sector]['first_date_count_close'], close_a)
-        # accumulatore di azioni
-        if ticker not in years_map[curr_year][sector]:   # se il ticker non è già presente nel dizionario
-            years_map[curr_year][sector][ticker] = {}
+        if date == years_map[curr_year][sector]['last_date']:   # controllo dell'ultima data in quell'anno per il settore
+            years_map[curr_year][sector]['last_date_count_close'] += close_a
+            years_map[curr_year][sector]['var_count_close'] = percentage_change(years_map[curr_year][sector]['first_date_count_close'], years_map[curr_year][sector]['last_date_count_close'])
+        elif date > years_map[curr_year][sector]['last_date']:  # controllo dell'ultima data in quell'anno per il settore
+            years_map[curr_year][sector]['last_date'] = date
+            years_map[curr_year][sector]['last_date_count_close'] = close_a
+            years_map[curr_year][sector]['var_count_close'] = percentage_change(years_map[curr_year][sector]['first_date_count_close'], close_a)
+    # accumulatore di azioni
+    if ticker not in years_map[curr_year][sector]:   # se il ticker non è già presente nel dizionario
+        years_map[curr_year][sector][ticker] = {}
+        years_map[curr_year][sector][ticker]['first_date'] = date
+        years_map[curr_year][sector][ticker]['last_date'] = date
+        years_map[curr_year][sector][ticker]['first_date_close'] = close_a
+        years_map[curr_year][sector][ticker]['last_date_close'] = close_a
+        years_map[curr_year][sector][ticker]['var'] = 0
+        years_map[curr_year][sector][ticker]['volume'] = volume
+    else:   # se il ticker è già presente nel dizionario
+        if date < years_map[curr_year][sector][ticker]['first_date']:   # controllo della prima data in quell'anno per l'azione
             years_map[curr_year][sector][ticker]['first_date'] = date
-            years_map[curr_year][sector][ticker]['last_date'] = date
             years_map[curr_year][sector][ticker]['first_date_close'] = close_a
+            years_map[curr_year][sector][ticker]['var'] = percentage_change(close_a, years_map[curr_year][sector][ticker]['last_date_close'])
+        elif date > years_map[curr_year][sector][ticker]['last_date']:  # controllo dell'ultima data in quell'anno per l'azione
+            years_map[curr_year][sector][ticker]['last_date'] = date
             years_map[curr_year][sector][ticker]['last_date_close'] = close_a
-            years_map[curr_year][sector][ticker]['var'] = 0
-            years_map[curr_year][sector][ticker]['volume'] = volume
-        else:   # se il ticker è già presente nel dizionario
-            if date < years_map[curr_year][sector][ticker]['first_date']:   # controllo della prima data in quell'anno per l'azione
-                years_map[curr_year][sector][ticker]['first_date'] = date
-                years_map[curr_year][sector][ticker]['first_date_close'] = close_a
-                years_map[curr_year][sector][ticker]['var'] = percentage_change(close_a, years_map[curr_year][sector][ticker]['last_date_close'])
-            elif date > years_map[curr_year][sector][ticker]['last_date']:  # controllo dell'ultima data in quell'anno per l'azione
-                years_map[curr_year][sector][ticker]['last_date'] = date
-                years_map[curr_year][sector][ticker]['last_date_close'] = close_a
-                years_map[curr_year][sector][ticker]['var'] = percentage_change(years_map[curr_year][sector][ticker]['first_date_close'], close_a)
+            years_map[curr_year][sector][ticker]['var'] = percentage_change(years_map[curr_year][sector][ticker]['first_date_close'], close_a)
 
-            years_map[curr_year][sector][ticker]['volume'] += volume    # aggiornamento del volume
+        years_map[curr_year][sector][ticker]['volume'] += volume    # aggiornamento del volume
 
-        # Eventuale aggiornamento dei valori massimi
-        if sector not in return_map:
-            return_map[sector] = {}
-        if curr_year not in return_map[sector]:
-            return_map[sector][curr_year] = {'max_var_count_close':0, 'max_var_act':0, 'max_var_act_name':'', 'max_vol_act':0, 'max_vol_act_name':''}
+    # Eventuale aggiornamento dei valori massimi
+    if sector not in return_map:
+        return_map[sector] = {}
+    if curr_year not in return_map[sector]:
+        return_map[sector][curr_year] = {'max_var_count_close':0, 'max_var_act':0, 'max_var_act_name':'', 'max_vol_act':0, 'max_vol_act_name':''}
 
-        if years_map[curr_year][sector]['var_count_close'] > return_map[sector][curr_year]['max_var_count_close']:   # controllo e in nuovo var max del settore nell'anno è cambiato
-            return_map[sector][curr_year]['max_var_count_close'] = years_map[curr_year][sector]['var_count_close']
-        if years_map[curr_year][sector][ticker]['volume'] > return_map[sector][curr_year]['max_vol_act']:    # controllo se il volume massimo dell'azione nel settore corrente è cambiato
-            return_map[sector][curr_year]['max_vol_act'] = years_map[curr_year][sector][ticker]['volume']
-            return_map[sector][curr_year]['max_vol_act_name'] = ticker
-        if years_map[curr_year][sector][ticker]['var'] > return_map[sector][curr_year]['max_var_act']:
-            return_map[sector][curr_year]['max_var_act'] = years_map[curr_year][sector][ticker]['var']
-            return_map[sector][curr_year]['max_var_act_name'] = ticker
+    if years_map[curr_year][sector]['var_count_close'] > return_map[sector][curr_year]['max_var_count_close']:   # controllo e in nuovo var max del settore nell'anno è cambiato
+        return_map[sector][curr_year]['max_var_count_close'] = years_map[curr_year][sector]['var_count_close']
+    if years_map[curr_year][sector][ticker]['volume'] > return_map[sector][curr_year]['max_vol_act']:    # controllo se il volume massimo dell'azione nel settore corrente è cambiato
+        return_map[sector][curr_year]['max_vol_act'] = years_map[curr_year][sector][ticker]['volume']
+        return_map[sector][curr_year]['max_vol_act_name'] = ticker
+    if years_map[curr_year][sector][ticker]['var'] > return_map[sector][curr_year]['max_var_act']:
+        return_map[sector][curr_year]['max_var_act'] = years_map[curr_year][sector][ticker]['var']
+        return_map[sector][curr_year]['max_var_act_name'] = ticker
 
 # Ordinamento del risultato secondo l'ordine decrescende di ultima chiusura
 sorted_list = sorted(return_map.items(), key = lambda kv:(kv[0], kv[1]))
@@ -147,5 +146,5 @@ for item in sorted_list:
     out_str = f"Settore: {item[0]}"
 
     for key in item[1]:
-        out_str += "\n\tanno: {},\tvariazione quotazione del settore: {:.4f}%,\tazione con il maggior incremento percentuale: {} ({:.4f}%),\tazione con il maggior volume: {} ({})".format(key, item[1][key]['max_var_count_close'], item[1][key]['max_var_act_name'], item[1][key]['max_var_act'], item[1][key]['max_vol_act_name'], item[1][key]['max_vol_act'])
+        out_str += "\n\tanno: {},\tvariazione quotazione del settore: {:.2f}%,\tazione con il maggior incremento percentuale: {} ({:.2f}%),\tazione con il maggior volume: {} ({})".format(key, item[1][key]['max_var_count_close'], item[1][key]['max_var_act_name'], item[1][key]['max_var_act'], item[1][key]['max_vol_act_name'], item[1][key]['max_vol_act'])
     print(out_str)
