@@ -6,6 +6,7 @@ DROP TABLE firstCLose;
 DROP TABLE lastCLose;
 DROP TABLE variazionePercentuale;
 
+
 CREATE TABLE historical_stock_prices (ticker STRING, open float, close float, adj_close float,lowThe float, highThe float, volume float, dates date)
 ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ',';
@@ -68,17 +69,19 @@ FROM firstCLose AS a , lastCLose AS b
 WHERE a.ticker=b.ticker AND a.mese=b.mese; 
 
 --query finale 
+
 SELECT 
     a1.name AS name1,
     a2.name AS name2, 
     a1.mese, 
-    a1.variazione,
-	a2.variazione
-FROM variazionePercentuale AS a1 JOIN variazionePercentuale AS a2  ON 
-       (a1.mese=a2.mese=1 AND a1.mese=a2.mese=2 AND a1.mese=a2.mese=3 AND a1.mese=a2.mese=4 AND a1.mese=a2.mese=5 AND a1.mese=a2.mese=6
-	   AND a1.mese=a2.mese=7 AND a1.mese=a2.mese=8 AND a1.mese=a2.mese=9 AND a1.mese=a2.mese=10 AND a1.mese=a2.mese=11 AND a1.mese=a2.mese=12)
+    a1.variazione as variazione1,
+	a2.variazione as variazione2
+FROM variazionePercentuale AS a1 JOIN  variazionePercentuale AS a2  ON
+       a1.mese= a2.mese 
 WHERE a1.name!=a2.name AND (a1.variazione-a2.variazione<1) AND (a1.variazione-a2.variazione>0)
-SORT BY name1 DESC;
+SORT BY name1,name2 DESC;
+
+
 
 
 
