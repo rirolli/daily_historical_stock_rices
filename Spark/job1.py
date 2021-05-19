@@ -58,18 +58,12 @@ min_max_price=min_price.join(max_price)
 # ticker,(prezzo di chiusura e relativa data della prima quotazione),(prezzo di chiusura e relativa data dell'ultima quotazione)
 join_variazione_percentuale = first_date.join(last_date) 
 
-#(ticker,((min_price,max_price),((first_data),(last_data))))
-#join_output=min_max_price.join(join_variazione_percentuale).map(lambda linea:(linea[0],linea[1][0][0],linea[1][0][1],linea[1][1][0][1],linea[1][1][1][1]))
-
 # (ticker ( variazione percentuale della quotazione))
 variazione_percentuale = join_variazione_percentuale.map(lambda linea: (linea[0],((float(linea[1][1][0]) - float(linea[1][0][0]))/float(linea[1][0][0]))*100))
 
-#output=min_max_price.join(join_variazione_percentuale).join(variazione_percentuale)
-join_output=min_max_price.join(join_variazione_percentuale).map(lambda linea:(linea[0],linea[1][0][0],linea[1][0][1],linea[1][1][0][1],linea[1][1][1][1])).join(variazione_percentuale)
-join_output.saveAsTextFile(output_filepath)
+#(ticker,((min_price,max_price),((first_data),(last_data))))
+#join_output=min_max_price.join(join_variazione_percentuale).map(lambda linea:(linea[0],linea[1][0][0],linea[1][0][1],linea[1][1][0][1],linea[1][1][1][1]))
 
-
-# this final action saves the RDD of strings as a new folder in the FS
-# spark.sparkContext.parallelize(output_RDD).saveAsTextFile(output_filepath)
-
-# output_RDD.saveAsTextFile(output_filepath)
+output=min_max_price.join(join_variazione_percentuale).join(variazione_percentuale) 
+						
+output.saveAsTextFile(output_filepath)
