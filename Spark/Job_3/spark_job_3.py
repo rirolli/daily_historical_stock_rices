@@ -23,12 +23,17 @@ args = parser.parse_args()
 input_file = args.input_path
 output_file = args.output_path
 
+input_file = ['file:////home/riccardo/Scrivania/Progetto/02_Spark/job_3/historical_stock_prices.csv', 'file:////home/riccardo/Scrivania/Progetto/02_Spark/job_3/historical_stocks.csv']
+output_file = 'file:////home/riccardo/Scrivania/Progetto/02_Spark/job_3/output'
+
 if 'historical_stock_prices' in input_file[0]:
     hsp_file = input_file[0]
     hs_file = input_file[1]
 else:
     hsp_file = input_file[1]
     hs_file = input_file[0]
+
+THRESHOLD=1
 
 # spark session
 spark = SparkSession \
@@ -59,6 +64,9 @@ def get_month(d):
 
 def get_day(d):
     return d[8:]
+
+def similar_percentage_change(a, b, threshold=THRESHOLD):
+    return abs(a-b) <= threshold
 
 # import del testo
 # ticker, open, close, adj_close, low, high, volume, date
@@ -93,11 +101,41 @@ last_month_date_RDD = input_RDD.map(lambda line: ((line[0],line[1],int(get_month
     .reduceByKey(lambda x, y: (x[0], x[1]) if x[0]>y[0] else (y[0], y[1])) \
 
 # (('DSKE', '"DASEKE', 12), ((1, 12.8400001525879), (29, 14.289999961853)))
+# => (('A', '"AGILENT TECHNOLOGIES', 2), 4.141293108074551)
 percentage_month_RDD = fisrt_month_date_RDD.join(last_month_date_RDD) \
     .map(lambda line: (line[0], percentage_change(line[1][0][1], line[1][1][1]))) \
-        .sortByKey() \
-    .collect()
+        .sortByKey()
 
-spark.sparkContext.parallelize(percentage_month_RDD) \
+# persist percentage_month_RDD
+percentage_month_RDD.persist(StorageLevel.MEMORY_AND_DISK)
+
+# (('A', '"AGILENT TECHNOLOGIES', 2), 4.141293108074551)
+# => (2, (4.141293108074551, '"AGILENT TECHNOLOGIES'))
+similar_RDD = percentage_month_RDD.map(lambda line: ((line[0][2]), (line[1], line[0][1])))
+
+# ((1, (5.33447935620313, '"AGILENT TECHNOLOGIES')), (1, (5.33447935620313, '"AGILENT TECHNOLOGIES')))
+# => (('"AGILENT TECHNOLOGIES', 'ALCOA CORPORATION', 1), 5.33447935620313, 26.430804229616694)
+similar_RDD = similar_RDD.cartesian(similar_RDD) \
+    .filter(lambda line: line[0][0] == line[1][0]) \
+        .map(lambda line: (line[0][1][1], line[0][1][0], line[1][1][1], line[1][1][0], line[0][0])) \
+            .filter(lambda line: line[0] != line[2]) \
+                .map(lambda line: ((line[0], line[2], line[4]), line[1], line[3])) \
+                    .filter(lambda line: similar_percentage_change(line[1], line[2]))
+
+similar_RDD.persist(StorageLevel.MEMORY_AND_DISK)
+
+# (('DTE ENERGY COMPANY', '"CAVCO INDUSTRIES'), [(4, (2.882148898519137, 2.3265806783631113)), (7, (1.4402090485896346, 2.2745050168502003)), (4, (1.842754961235011, 2.3265806783631113)), (7, (1.4566962393317195, 2.2745050168502003)), (8, (0.07350202005133324, 0.2608093230069242)), (12, (-0.7404541511591695, -0.39163894039025243)), (12, (0.07974664204323223, -0.39163894039025243)), (1, (0.2646991704747534, -0.6572310574826654)), (4, (1.8907166034033258, 2.3265806783631113)), (1, (0.0, -0.6572310574826654)), (11, (-1.5797149473704621, -2.3589493548314553)), (12, (-0.03734215319414561, -0.39163894039025243))])
+grouped_similar_RDD = similar_RDD.map(lambda line: ((line[0][0], line[0][1]),[(line[0][2], (line[1], line[2]))])) \
+    .reduceByKey(lambda x, y: x+y) \
+        .filter(lambda line: len(line[1])==12) \
+            .map(lambda line: (line[0], sorted(line[1], key=lambda tup: tup[0]))) \
+                .sortByKey() \
+                    .collect()
+
+# in caso togliere:
+# .map(lambda line: (line[0], sorted(line[1], key=lambda tup: tup[0]))) \
+#         .sortByKey() \
+
+spark.sparkContext.parallelize(grouped_similar_RDD) \
     .coalesce(1) \
         .saveAsTextFile(output_file)
