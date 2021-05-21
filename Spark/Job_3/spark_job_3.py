@@ -72,17 +72,14 @@ def similar_percentage_change(a, b, threshold=THRESHOLD):
 # ticker, open, close, adj_close, low, high, volume, date
 hsp_RDD = spark.sparkContext.textFile(hsp_file) \
     .map(lambda line: line.split(',')) \
-        .filter(lambda line: len(line)>1) \
-            .filter(lambda line: line[0]!='ticker') \
-                .filter(lambda line: get_year(line[7]) == "2017") \
-                    .map(lambda line: (line[0], (line[2],line[7])))
+        .filter(lambda line: len(line)>1 and line[0]!='ticker' and get_year(line[7]) == "2017") \
+            .map(lambda line: (line[0], (line[2],line[7])))
 
 # ticker, exchange, name, sector, industry
 hs_RDD = spark.sparkContext.textFile(hs_file) \
     .map(lambda line: line.split(',')) \
-        .filter(lambda line: len(line)>1) \
-            .filter(lambda line: line[0]!='ticker') \
-                .map(lambda line: (line[0], line[2]))
+        .filter(lambda line: len(line)>1 and line[0]!='ticker') \
+            .map(lambda line: (line[0], line[2]))
 
 # join => ('DSKE', (('10.1999998092651', '2017-01-17'), '"DASEKE))
 # map  => ('DSKE', '"DASEKE', '10.1999998092651', '2017-01-17')
@@ -109,32 +106,81 @@ percentage_month_RDD = fisrt_month_date_RDD.join(last_month_date_RDD) \
 # persist percentage_month_RDD
 percentage_month_RDD.persist(StorageLevel.MEMORY_AND_DISK)
 
-# (('A', '"AGILENT TECHNOLOGIES', 2), 4.141293108074551)
-# => (2, (4.141293108074551, '"AGILENT TECHNOLOGIES'))
-similar_RDD = percentage_month_RDD.map(lambda line: ((line[0][2]), (line[1], line[0][1])))
+################################################################################################ fin qui tutto ok
+# percentage_month_RDD = percentage_month_RDD.collect()   # diventa una lista!
 
-# ((1, (5.33447935620313, '"AGILENT TECHNOLOGIES')), (1, (5.33447935620313, '"AGILENT TECHNOLOGIES')))
-# => (('"AGILENT TECHNOLOGIES', 'ALCOA CORPORATION', 1), 5.33447935620313, 26.430804229616694)
+# simil_map = {}
+# for i in range(len(percentage_month_RDD)):
+#     for j in range(i, len(percentage_month_RDD)):
+#         i_line = percentage_month_RDD[i]
+#         j_line = percentage_month_RDD[j]
+#         couple = (i_line[0][0],j_line[0][0])
+#         i_perc_change = i_line[1]
+#         j_perc_change = j_line[1]
+#         simil = similar_percentage_change(i_perc_change, j_perc_change)
+
+#         if i_line==j_line:
+#             continue
+#         elif i_line[0][2]==j_line[0][2]:
+#             month = i_line[0][2]
+#             if couple not in simil_map and simil is True:
+#                 simil_map[couple] = [(month, (i_perc_change, j_perc_change))]
+#             elif couple in simil_map and simil is True:
+#                 simil_map[couple].append((month, (i_perc_change, j_perc_change)))
+#             else:
+#                 continue
+
+# simil_map = {}
+# for i_line in percentage_month_RDD:
+#     for j_line in percentage_month_RDD:
+#         couple = (i_line[0][0],j_line[0][0])
+#         i_perc_change = i_line[1]
+#         j_perc_change = j_line[1]
+#         simil = similar_percentage_change(i_perc_change, j_perc_change)
+
+#         if i_line==j_line:
+#             continue
+#         elif i_line[0][2]==j_line[0][2]:
+#             month = i_line[0][2]
+#             if couple not in simil_map and simil is True:
+#                 simil_map[couple] = [(month, (i_perc_change, j_perc_change))]
+#             elif couple in simil_map and simil is True:
+#                 simil_map[couple].append((month, (i_perc_change, j_perc_change)))
+#             else:
+#                 continue
+
+# similar_RDD = spark.sparkContext.parallelize(simil_map.items()) \
+#     .filter(lambda line: len(line[1])==12) \
+#         .map(lambda line: (line[0], sorted(line[1], key=lambda tup: tup[0]))) \
+#             .take(25)
+# (('"AGILENT TECHNOLOGIES', 'AMERISOURCEBERGEN CORPORATION (HOLDING CO)'), [(1, (5.33447935620313, 5.6530663774866445)), (2, (4.141293108074551, 3.272770010047949))])
+
+
+# # (('A', '"AGILENT TECHNOLOGIES', 2), 4.141293108074551)
+# # => (2, (4.141293108074551, '"AGILENT TECHNOLOGIES'))
+similar_RDD = percentage_month_RDD.map(lambda line: ((line[0][2]), (line[1], line[0][1], line[0][0])))
+
+# # ((1, (5.33447935620313, '"AGILENT TECHNOLOGIES', 'A')), (1, (5.33447935620313, '"AGILENT TECHNOLOGIES', 'A')))
+# # => (('A', '"AGILENT TECHNOLOGIES', 'A', 'ALCOA CORPORATION', 1), 5.33447935620313, 26.430804229616694)
 similar_RDD = similar_RDD.cartesian(similar_RDD) \
-    .filter(lambda line: line[0][0] == line[1][0]) \
-        .map(lambda line: (line[0][1][1], line[0][1][0], line[1][1][1], line[1][1][0], line[0][0])) \
-            .filter(lambda line: line[0] != line[2]) \
-                .map(lambda line: ((line[0], line[2], line[4]), line[1], line[3])) \
-                    .filter(lambda line: similar_percentage_change(line[1], line[2]))
+    .filter(lambda line: line[0][0] == line[1][0] and line[0][1][2] != line[1][1][2]) \
+        .map(lambda line: ((line[0][1][2], line[0][1][1], line[1][1][2], line[1][1][1], line[0][0]), line[0][1][0], line[1][1][0])) \
+            .filter(lambda line: similar_percentage_change(line[1], line[2]))
 
 similar_RDD.persist(StorageLevel.MEMORY_AND_DISK)
 
-# (('DTE ENERGY COMPANY', '"CAVCO INDUSTRIES'), [(4, (2.882148898519137, 2.3265806783631113)), (7, (1.4402090485896346, 2.2745050168502003)), (4, (1.842754961235011, 2.3265806783631113)), (7, (1.4566962393317195, 2.2745050168502003)), (8, (0.07350202005133324, 0.2608093230069242)), (12, (-0.7404541511591695, -0.39163894039025243)), (12, (0.07974664204323223, -0.39163894039025243)), (1, (0.2646991704747534, -0.6572310574826654)), (4, (1.8907166034033258, 2.3265806783631113)), (1, (0.0, -0.6572310574826654)), (11, (-1.5797149473704621, -2.3589493548314553)), (12, (-0.03734215319414561, -0.39163894039025243))])
-grouped_similar_RDD = similar_RDD.map(lambda line: ((line[0][0], line[0][1]),[(line[0][2], (line[1], line[2]))])) \
+# # => (('A', '"AGILENT TECHNOLOGIES', 'A', 'ALCOA CORPORATION', 1), 5.33447935620313, 26.430804229616694)
+# # (('DTE ENERGY COMPANY', '"CAVCO INDUSTRIES'), [(4, (2.882148898519137, 2.3265806783631113)), (7, (1.4402090485896346, 2.2745050168502003)), (4, (1.842754961235011, 2.3265806783631113)), (7, (1.4566962393317195, 2.2745050168502003)), (8, (0.07350202005133324, 0.2608093230069242)), (12, (-0.7404541511591695, -0.39163894039025243)), (12, (0.07974664204323223, -0.39163894039025243)), (1, (0.2646991704747534, -0.6572310574826654)), (4, (1.8907166034033258, 2.3265806783631113)), (1, (0.0, -0.6572310574826654)), (11, (-1.5797149473704621, -2.3589493548314553)), (12, (-0.03734215319414561, -0.39163894039025243))])
+grouped_similar_RDD = similar_RDD.map(lambda line: ((line[0][0], line[0][1], line[0][2], line[0][3]),[(line[0][4], (line[1], line[2]))])) \
     .reduceByKey(lambda x, y: x+y) \
         .filter(lambda line: len(line[1])==12) \
-            .map(lambda line: (line[0], sorted(line[1], key=lambda tup: tup[0]))) \
+            .map(lambda line: ((line[0][1], line[0][3]), sorted(line[1], key=lambda tup: tup[0]))) \
                 .sortByKey() \
                     .collect()
 
-# in caso togliere:
-# .map(lambda line: (line[0], sorted(line[1], key=lambda tup: tup[0]))) \
-#         .sortByKey() \
+# # in caso togliere:
+# # .map(lambda line: (line[0], sorted(line[1], key=lambda tup: tup[0]))) \
+# #         .sortByKey() \
 
 spark.sparkContext.parallelize(grouped_similar_RDD) \
     .coalesce(1) \
