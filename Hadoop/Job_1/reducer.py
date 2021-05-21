@@ -66,10 +66,13 @@ for line in sys.stdin:
     except Exception:
         continue
 
+    # ritorno del mese e del giorno corrente
+    curr_year = date.year
+
     # Managment del dizionario
     if ticker not in action_map:
         action_map[ticker] = {'first_date':date, 'last_date':date, 'var':0,
-            'max_price':high, 'min_price':low, 'first_close': close_a, 'last_close':close_a, 'days_of_growth':0} 
+            'max_price':high, 'min_price':low, 'first_close': close_a, 'last_close':close_a, 'days_of_growth':0, 'year_of_growth':0} 
     else:
         if action_map[ticker]['first_date']>date:
             action_map[ticker]['first_date']=date
@@ -99,18 +102,27 @@ for key, value in meta_growth_days.items():
     sorted_meta_growth_days[key] = sorted(value ,key=lambda x: (x[0]))
 # Ora si procede con il conteggio dei giorni consecutivi di crescita
 for key in sorted_meta_growth_days.keys():
-    growth_days[key] = {'current':0, 'max':0}   # Inizializzazione del dizionario
+    growth_days[key] = {'current':0, 'current_year':0, 'max':0, 'max_year':0}   # Inizializzazione del dizionario
 for key, values in sorted_meta_growth_days.items():
     for value in values:
+        curr_year = value[0].year
         if value[1] is True:
-            growth_days[key]['current']+=1
+            if curr_year == growth_days[key]['max_year']:
+                growth_days[key]['current']+=1
+            else:
+                growth_days[key]['current']=1
+                growth_days[key]['current_year']=curr_year
+
             if growth_days[key]['current']>growth_days[key]['max']:
                 growth_days[key]['max'] = growth_days[key]['current']
+                growth_days[key]['max_year'] = growth_days[key]['current_year']
         else:
             growth_days[key]['current']=0
+            growth_days[key]['current_year']=curr_year
 # Aggiunta del dato di giorni di crescita consecutivi al dizionario
 for key in growth_days.keys():
     action_map[key]['days_of_growth'] = growth_days[key]['max']
+    action_map[key]['year_of_growth'] = growth_days[key]['max_year']
 
 # Ordinamento del risultato secondo l'ordine decrescende di ultima chiusura
 sorted_list = sorted(action_map.items(), reverse=True ,key=lambda x: (x[1]['last_date']))
